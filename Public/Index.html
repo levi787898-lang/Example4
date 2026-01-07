@@ -1,0 +1,91 @@
+<script>
+let adminToken = "";
+let cars = [];
+
+/* LOGIN */
+function enterSite(){
+  const username = user.value;
+  const password = prompt("Enter Admin Password (leave blank if user)");
+
+  if(username === "Admin"){
+    fetch("/login",{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({ username, password })
+    })
+    .then(r=>{
+      if(!r.ok) throw "Invalid";
+      return r.json();
+    })
+    .then(d=>{
+      adminToken = d.token;
+      addBtn.style.display="flex";
+      login.style.display="none";
+      loadCars();
+    })
+    .catch(()=>alert("Wrong password"));
+  }else{
+    login.style.display="none";
+    loadCars();
+  }
+}
+
+function loadCars(){
+  fetch("/cars")
+    .then(r=>r.json())
+    .then(d=>{
+      cars=d;
+      render();
+    });
+}
+
+function render(){
+  carsBox.innerHTML="";
+  cars.forEach((c,i)=>{
+    carsBox.innerHTML+=`
+    <div class="car" onclick="openDetails(${i})">
+      <img src="${c.images[0]}">
+      <div class="info">
+        <h3>${c.name}</h3>
+        <p>${c.model} (${c.year})</p>
+        <p>₹ ${c.price}</p>
+        ${adminToken?`<button onclick="event.stopPropagation();del(${i})">Delete</button>`:""}
+      </div>
+    </div>`;
+  });
+}
+
+function addCar(){
+  const f=new FormData();
+  ["name","model","year","condition","mileage","driven","price"]
+    .forEach(id=>f.append(id,document.getElementById(id).value));
+  [...images.files].forEach(x=>f.append("images",x));
+
+  fetch("/add-car",{
+    method:"POST",
+    headers:{ token: adminToken },
+    body:f
+  }).then(()=>location.reload());
+}
+
+function del(i){
+  fetch("/delete/"+i,{
+    method:"POST",
+    headers:{ token: adminToken }
+  }).then(()=>location.reload());
+}
+
+function openDetails(i){
+  gallery.innerHTML="";
+  cars[i].images.forEach(img=>gallery.innerHTML+=`<img src="${img}">`);
+  detailText.innerHTML=`
+    <h2>${cars[i].name}</h2>
+    <p>Model: ${cars[i].model}</p>
+    <p>Year: ${cars[i].year}</p>
+    <p>Condition: ${cars[i].condition}</p>
+    <p>Mileage: ${cars[i].mileage}</p>
+    <p>Driven: ${cars[i].driven}</p>
+    <h3>₹ ${cars[i].price}</h3>`;
+  details.style.display="flex";
+}
+</script>
